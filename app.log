@@ -1,0 +1,3 @@
+Menambahkan route GET /game/:game
+Menambahkan route GET /game/get-zone/:game
+Example app listening at http://localhost:3001
