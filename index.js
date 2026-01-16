@@ -29,9 +29,33 @@ app.use(limiter);
 // Security middleware
 app.use(
   helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdn.tailwindcss.com",
+          "https://cdnjs.cloudflare.com"
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com",
+          "https://cdnjs.cloudflare.com"
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com",
+          "data:"
+        ],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "https:"],
+      },
+    },
   })
 );
+
 
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
