@@ -27,35 +27,17 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Security middleware
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://cdn.tailwindcss.com",
-          "https://cdnjs.cloudflare.com"
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com",
-          "https://cdnjs.cloudflare.com"
-        ],
-        fontSrc: [
-          "'self'",
-          "https://fonts.gstatic.com",
-          "data:"
-        ],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "https:"],
-      },
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "cdnjs.cloudflare.com"],
+      scriptSrc: ["'self'", "cdnjs.cloudflare.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'", "https:", "data:"],
     },
-  })
-);
-
+  },
+}));
 
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
