@@ -50,6 +50,7 @@ app.use(
         fontSrc: [
           "'self'",
           "https://fonts.gstatic.com",
+          "https://cdnjs.cloudflare.com",
           "data:"
         ],
 
