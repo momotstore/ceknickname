@@ -73,7 +73,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', router);
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', '404.html'));
 });
 app.get('/dokumentasi', (req, res) => {
    res.sendFile(path.join(__dirname, 'public', 'dokumentasi.html'));
