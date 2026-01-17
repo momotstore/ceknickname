@@ -38,7 +38,10 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(express.static(path.join(__dirname, 'public'), {
+  index: false // ⬅️ INI KUNCINYA
+}));
 
 app.use('/api', router);
 
