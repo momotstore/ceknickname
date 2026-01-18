@@ -30,7 +30,7 @@ app.use('/api', router);
 // Root → 404 UI
 app.get('/', (req, res) => {
   res.status(404).sendFile(
-    path.join(__dirname, 'public', 'index.html')
+    path.join(__dirname, 'public', '404.html')
   );
 });
 
