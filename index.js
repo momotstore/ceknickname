@@ -2,10 +2,13 @@ const express = require('express');
 const fetch = require('node-fetch');
 const axios = require('axios');
 const cors = require('cors');
-const path = require('path')
+const path = require('path');
 const _ = require('lodash');
 const { dataGame } = require('./utils/data');
 const router = require('./routes');
+
+// Import module WWM Game
+const wwmGame = require('./wwmGames'); 
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -16,6 +19,7 @@ app.use(cors());
 
 app.use('/api', router);
 
+// --- Static Pages ---
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -34,6 +38,10 @@ app.get('/scraping', (req, res) => {
 app.get('/ff-region', (req, res) => {
    res.sendFile(path.join(__dirname, 'public', 'ff-region.html'));
 });
+
+// --- API Endpoints ---
+
+// Endpoint Stalk Free Fire
 app.post('/ffstalk', async (req, res) => {
    try {
        const { id } = req.body;
@@ -51,35 +59,43 @@ app.post('/ffstalk', async (req, res) => {
    }
 });
 
-// API endpoint to check Mobile Legends first topup packag
-app.get('/api/mlbb/ganda', async (req, res) => {
-    const { id, zone } = req.params;
-    
+// Endpoint Where Winds Meet (WWM)
+app.get('/api/wwm/:id', async (req, res) => {
     try {
-        const mlFirstTopup = await MbFirstTopup(id, zone);
-        
-        if (mlFirstTopup === null) {
-            return res.status(500).json({
-                code: 500,
-                status: false,
-                creator: 'ceknickname.vercel.app',
-                message: 'Internal Server Error'
-            });
-        } else {
+        const userId = req.params.id; 
+        const result = await wwmGame(userId);
+
+        if (result.status) {
             return res.status(200).json({
                 code: 200,
                 status: true,
                 creator: 'ceknickname.vercel.app',
-                message: 'First Topup packages retrieved successfully',
-                data: {
-                    username: mlFirstTopup.username || null,
-                    user_id: id,
-// API endpoint to check Mobile Legends first topup package
+                data: result
+            });
+        } 
+        
+        return res.status(404).json({
+            code: 404,
+            status: false,
+            creator: 'ceknickname.vercel.app',
+            message: result.message || "User ID tidak ditemukan"
+        });
+
+    } catch (error) {
+        console.error("Error pada route /api/wwm:", error);
+        return res.status(500).json({
+            code: 500,
+            status: false,
+            creator: 'ceknickname.vercel.app',
+            message: "Terjadi kesalahan pada server"
+        });
+    }
+});
+
+// Endpoint MLBB First Topup
 app.get('/api/mlbb/ganda', async (req, res) => {
-    // Changed from req.params to req.query since this is a GET request with query parameters
     const { id, zone } = req.query;
     
-    // Add validation for required parameters
     if (!id || !zone) {
         return res.status(400).json({
             code: 400,
@@ -100,7 +116,6 @@ app.get('/api/mlbb/ganda', async (req, res) => {
                 message: 'Internal Server Error'
             });
         } else if (mlFirstTopup.code === 404) {
-            // Pass through the 404 error from the MbFirstTopup function
             return res.status(404).json(mlFirstTopup);
         } else {
             return res.status(200).json({
@@ -127,7 +142,7 @@ app.get('/api/mlbb/ganda', async (req, res) => {
     }
 });
 
-// Also modify the MbFirstTopup function to correctly return 404 errors
+// Helper Function MLBB
 async function MbFirstTopup(user_id, zone_id) {
     try {
         const res = await fetch(
@@ -137,29 +152,16 @@ async function MbFirstTopup(user_id, zone_id) {
                 headers: {
                     'User-Agent': 'Mozilla/5.0',
                     'Accept': 'application/json, text/plain, */*',
-                    'Accept-Encoding': 'gzip, deflate, br, zstd',
-                    'sec-ch-ua': '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
-                    'dnt': '1',
-                    'x-lang': 'en',
-                    'sec-ch-ua-mobile': '?0',
-                    'sec-ch-ua-platform': '"Windows"',
                     'origin': 'https://www.mobapay.com',
-                    'sec-fetch-site': 'same-site',
-                    'sec-fetch-mode': 'cors',
-                    'sec-fetch-dest': 'empty',
                     'referer': 'https://www.mobapay.com/',
-                    'accept-language': 'en-US,en;q=0.9,id-ID;q=0.8,id;q=0.7',
-                    'priority': 'u=1, i',
                 }
             }
         );
 
         const resJson = await res.json();
         
-        // Check if user exists
         if (resJson.code == 0 && resJson.data?.user_info?.code == 0) {
             const items = resJson?.data?.shop_info?.good_list || [];
-
             const daftarSku = {
                 "com.moonton.diamond_mt_id_50": "50 + 50",
                 "com.moonton.diamond_mt_id_150": "150 + 150",
@@ -168,7 +170,6 @@ async function MbFirstTopup(user_id, zone_id) {
             };
 
             let packageList = [];
-            
             for (const kode in daftarSku) {
                 const found = items.find(item => item.sku === kode);
                 packageList.push({
@@ -182,7 +183,6 @@ async function MbFirstTopup(user_id, zone_id) {
                 packages: packageList
             };
         } else {
-            // Return proper 404 object instead of using res.status
             return {
                 code: 404,
                 status: false,
@@ -195,7 +195,6 @@ async function MbFirstTopup(user_id, zone_id) {
         return null;
     }
 }
-
 
 app.get('/endpoint', (req, res) => {
    const newDataGame = dataGame.map((item) => {
