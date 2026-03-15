@@ -8,7 +8,7 @@ const { dataGame } = require('./utils/data');
 const router = require('./routes');
 
 // [REVISI]: Memperbaiki path require, menghapus huruf 's' di belakang wwmGame
-const wwmGame = require('./services/wwmGame'); 
+const wwmGame = require('./services/wwmGames'); 
 
 const app = express();
 const port = process.env.PORT || 3001;
