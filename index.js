@@ -7,8 +7,8 @@ const _ = require('lodash');
 const { dataGame } = require('./utils/data');
 const router = require('./routes');
 
-// Import module WWM Game
-const wwmGame = require('./services/wwmGames'); 
+// [REVISI]: Memperbaiki path require, menghapus huruf 's' di belakang wwmGame
+const wwmGame = require('./services/wwmGame'); 
 
 const app = express();
 const port = process.env.PORT || 3001;
