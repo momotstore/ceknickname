@@ -8,7 +8,7 @@ const { dataGame } = require('./utils/data');
 const router = require('./routes');
 
 // Import module WWM Game
-const wwmGame = require('./services/wwmGame'); 
+const wwmGame = require('./services/wwmGames'); 
 
 const app = express();
 const port = process.env.PORT || 3001;
