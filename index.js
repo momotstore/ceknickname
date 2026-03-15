@@ -17,6 +17,8 @@ try {
 const app = express();
 const port = process.env.PORT || 3001;
 
+app.set('trust proxy', 1); 
+
 app.use(express.json());
 app.use('/test', express.static('public'));
 app.use(cors());
