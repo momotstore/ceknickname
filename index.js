@@ -3,12 +3,16 @@ const fetch = require('node-fetch');
 const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
+const crypto = require('crypto');
 const _ = require('lodash');
-const { dataGame } = require('./utils/data');
-const router = require('./routes');
 
-// [REVISI]: Memperbaiki path require, menghapus huruf 's' di belakang wwmGame
-const wwmGame = require('./services/wwmGames'); 
+// Opsional: Pastikan file data.js tetap ada atau ganti dengan array kosong jika tidak digunakan
+let dataGame = [];
+try {
+    dataGame = require('./utils/data').dataGame;
+} catch (e) {
+    console.log("Warning: utils/data not found, using empty array.");
+}
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -17,132 +21,39 @@ app.use(express.json());
 app.use('/test', express.static('public'));
 app.use(cors());
 
-app.use('/api', router);
+// --- Core Functions (WWM & MLBB) ---
 
-// --- Static Pages ---
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-app.get('/dokumentasi', (req, res) => {
-   res.sendFile(path.join(__dirname, 'public', 'dokumentasi.html'));
-});
-app.get('/donasi', (req, res) => {
-   res.sendFile(path.join(__dirname, 'public', 'donasi.html'));
-});
-app.get('/sewa', (req, res) => {
-   res.sendFile(path.join(__dirname, 'public', 'sewa.html'));
-});
-app.get('/scraping', (req, res) => {
-   res.sendFile(path.join(__dirname, 'public', 'scraping.html'));
-});
-app.get('/ff-region', (req, res) => {
-   res.sendFile(path.join(__dirname, 'public', 'ff-region.html'));
-});
+/**
+ * Logic untuk pengecekan ID Where Winds Meet (WWM)
+ */
+const wwmGame = async (userId) => {
+    const deviceid = Math.floor(Math.random() * 1e17).toString();
+    const traceid = crypto.randomUUID();
+    const timestamp = Date.now();
 
-// --- API Endpoints ---
+    const url = `https://pay.neteasegames.com/gameclub/wherewindsmeet/1/login-role?deviceid=${deviceid}&traceid=${traceid}&timestamp=${timestamp}&gc_client_version=1.12.13&roleid=${userId}&client_type=gameclub`;
 
-// Endpoint Stalk Free Fire
-app.post('/ffstalk', async (req, res) => {
-   try {
-       const { id } = req.body;
-       if (!id) {
-           return res.status(400).json({ error: "ID tidak boleh kosong." });
-       }
-
-       const apiUrl = `https://api.vreden.my.id/api/ffstalk?id=${id}`;
-       const response = await axios.get(apiUrl);
-
-       res.status(200).json(response.data);
-   } catch (error) {
-       console.error("Error saat stalk akun FF:", error.message);
-       res.status(500).json({ error: "Gagal mengambil data Free Fire." });
-   }
-});
-
-// Endpoint Where Winds Meet (WWM)
-app.get('/api/wwm/:id', async (req, res) => {
     try {
-        const userId = req.params.id; 
-        const result = await wwmGame(userId);
+        const response = await fetch(url);
+        if (!response.ok) return { status: false, message: `HTTP error! status: ${response.status}` };
 
-        if (result.status) {
-            return res.status(200).json({
-                code: 200,
+        const json = await response.json();
+        if (json.code === "0000" && json.data) {
+            return {
                 status: true,
-                creator: 'ceknickname.vercel.app',
-                data: result
-            });
-        } 
-        
-        return res.status(404).json({
-            code: 404,
-            status: false,
-            creator: 'ceknickname.vercel.app',
-            message: result.message || "User ID tidak ditemukan"
-        });
-
-    } catch (error) {
-        console.error("Error pada route /api/wwm:", error);
-        return res.status(500).json({
-            code: 500,
-            status: false,
-            creator: 'ceknickname.vercel.app',
-            message: "Terjadi kesalahan pada server"
-        });
-    }
-});
-
-// Endpoint MLBB First Topup
-app.get('/api/mlbb/ganda', async (req, res) => {
-    const { id, zone } = req.query;
-    
-    if (!id || !zone) {
-        return res.status(400).json({
-            code: 400,
-            status: false,
-            creator: 'ceknickname.vercel.app',
-            message: 'Missing required parameters: id and zone are required'
-        });
-    }
-    
-    try {
-        const mlFirstTopup = await MbFirstTopup(id, zone);
-        
-        if (mlFirstTopup === null) {
-            return res.status(500).json({
-                code: 500,
-                status: false,
-                creator: 'ceknickname.vercel.app',
-                message: 'Internal Server Error'
-            });
-        } else if (mlFirstTopup.code === 404) {
-            return res.status(404).json(mlFirstTopup);
-        } else {
-            return res.status(200).json({
-                code: 200,
-                status: true,
-                creator: 'ceknickname.vercel.app',
-                message: 'First Topup packages retrieved successfully',
-                data: {
-                    username: mlFirstTopup.username || null,
-                    user_id: id,
-                    zone: zone || null,
-                    packages: mlFirstTopup.packages || mlFirstTopup
-                }
-            });
+                nickname: json.data.rolename,
+                userId: userId
+            };
         }
+        return { status: false, message: "User ID tidak ditemukan" };
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            code: 500,
-            status: false,
-            creator: 'ceknickname.vercel.app',
-            message: 'Internal Server Error'
-        });
+        return { status: false, message: error.message };
     }
-});
+};
 
-// Helper Function MLBB
+/**
+ * Logic untuk pengecekan MLBB First Topup
+ */
 async function MbFirstTopup(user_id, zone_id) {
     try {
         const res = await fetch(
@@ -159,7 +70,6 @@ async function MbFirstTopup(user_id, zone_id) {
         );
 
         const resJson = await res.json();
-        
         if (resJson.code == 0 && resJson.data?.user_info?.code == 0) {
             const items = resJson?.data?.shop_info?.good_list || [];
             const daftarSku = {
@@ -177,49 +87,83 @@ async function MbFirstTopup(user_id, zone_id) {
                     available: found?.game_can_buy ? true : false
                 });
             }
-
-            return {
-                username: resJson.data.user_info.user_name,
-                packages: packageList
-            };
-        } else {
-            return {
-                code: 404,
-                status: false,
-                creator: 'ceknickname.vercel.app',
-                message: 'ID tidak ditemukan'
-            };
+            return { username: resJson.data.user_info.user_name, packages: packageList };
         }
+        return { code: 404, status: false, message: 'ID tidak ditemukan' };
     } catch (err) {
-        console.log(err);
         return null;
     }
 }
 
+// --- Static Pages ---
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/dokumentasi', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dokumentasi.html')));
+app.get('/donasi', (req, res) => res.sendFile(path.join(__dirname, 'public', 'donasi.html')));
+app.get('/sewa', (req, res) => res.sendFile(path.join(__dirname, 'public', 'sewa.html')));
+app.get('/scraping', (req, res) => res.sendFile(path.join(__dirname, 'public', 'scraping.html')));
+app.get('/ff-region', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ff-region.html')));
+
+// --- API Endpoints ---
+
+// Endpoint WWM
+app.get('/api/wwm/:id', async (req, res) => {
+    try {
+        const result = await wwmGame(req.params.id);
+        const status = result.status ? 200 : 404;
+        res.status(status).json({
+            code: status,
+            status: result.status,
+            creator: 'ceknickname.vercel.app',
+            ...(result.status ? { data: result } : { message: result.message })
+        });
+    } catch (error) {
+        res.status(500).json({ code: 500, status: false, message: "Server Error" });
+    }
+});
+
+// Endpoint MLBB Ganda
+app.get('/api/mlbb/ganda', async (req, res) => {
+    const { id, zone } = req.query;
+    if (!id || !zone) return res.status(400).json({ code: 400, message: 'ID and Zone required' });
+    
+    const result = await MbFirstTopup(id, zone);
+    if (!result) return res.status(500).json({ code: 500, message: 'Internal Error' });
+    if (result.code === 404) return res.status(404).json(result);
+
+    res.status(200).json({
+        code: 200,
+        status: true,
+        creator: 'ceknickname.vercel.app',
+        data: { username: result.username, user_id: id, zone, packages: result.packages }
+    });
+});
+
+// Endpoint Stalk FF
+app.post('/ffstalk', async (req, res) => {
+   try {
+       const { id } = req.body;
+       if (!id) return res.status(400).json({ error: "ID required" });
+       const response = await axios.get(`https://api.vreden.my.id/api/ffstalk?id=${id}`);
+       res.status(200).json(response.data);
+   } catch (error) {
+       res.status(500).json({ error: "Gagal stalk FF" });
+   }
+});
+
 app.get('/endpoint', (req, res) => {
-   const newDataGame = dataGame.map((item) => {
-      return {
-         name: item.name,
-         slug: item.slug,
-         endpoint: `/api/game/${item.slug}`,
-         query: `?id=xxxx${item.isZone ? '&zone=xxx' : ''}`,
-         hasZoneId: item.isZone ? true : false,
-         listZoneId: item.dropdown ? `/api/game/get-zone/${item.slug}` : null,
-      };
-   });
-
-   return res.json({
-      name: 'XSTBot Whatsapp',
-      data: _.orderBy(newDataGame, ['name'], ['asc']),
-   });
+   const data = dataGame.map((item) => ({
+      name: item.name,
+      slug: item.slug,
+      endpoint: `/api/game/${item.slug}`,
+      query: `?id=xxxx${item.isZone ? '&zone=xxx' : ''}`,
+      hasZoneId: !!item.isZone,
+      listZoneId: item.dropdown ? `/api/game/get-zone/${item.slug}` : null,
+   }));
+   res.json({ name: 'XSTBot Whatsapp', data: _.orderBy(data, ['name'], ['asc']) });
 });
 
-app.get('/*', (req, res) => {
-   res.status(404).json({ error: 'Error' });
-});
+app.get('/*', (req, res) => res.status(404).json({ error: 'Not Found' }));
 
-app.listen(port, () => {
-   console.log(`Example app listening at http://localhost:${port}`);
-});
+app.listen(port, () => console.log(`Server running on port ${port}`));
 
 module.exports = app;
